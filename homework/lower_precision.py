@@ -6,8 +6,8 @@ def load(path: Path | None):
     # Extra credit: A BigNet variant that uses <4 bits/parameter and retains decent accuracy
     # A <9MB compressed model using 4-bit quantization + LoRA
     model = QLoRABigNet(
-        lora_dim=2,        # reduce to smallest possible
-        group_size=128     # increase group size
+        lora_dim=1,        # smallest LoRA size
+        group_size=256     # fewer float16 normalization terms
     )
 
     if path is not None:
