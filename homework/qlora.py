@@ -19,9 +19,9 @@ class QLoRALinear(Linear4Bit):
         super().__init__(in_features, out_features, bias=bias, group_size=group_size)
         self.requires_grad_(False)
 
-        # LoRA adapters (float32 and trainable)
-        self.lora_a = nn.Linear(in_features, lora_dim, bias=False).float()
-        self.lora_b = nn.Linear(lora_dim, out_features, bias=False).float()
+        self.lora_a = nn.Linear(in_features, lora_dim, bias=False).half()
+        self.lora_b = nn.Linear(lora_dim, out_features, bias=False).half()
+
 
         # Weight initialization
         nn.init.kaiming_uniform_(self.lora_a.weight, a=math.sqrt(5))
@@ -43,8 +43,8 @@ class QLoRALinear(Linear4Bit):
         # Linear using dequantized weights
         base_out = torch.nn.functional.linear(x, weight, self.bias)
 
-        # LoRA residual (keep in float32 for backward accuracy)
-        lora_out = self.lora_b(self.lora_a(x.float()))
+        lora_input = x.to(self.lora_a.weight.dtype)
+        lora_out = self.lora_b(self.lora_a(lora_input)).to(x.dtype)
 
         return (base_out + lora_out).to(input_dtype)
 
