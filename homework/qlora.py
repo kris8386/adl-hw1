@@ -72,18 +72,12 @@ class QLoRABigNet(torch.nn.Module):
         # TODO: Implement me (feel free to copy and reuse code from bignet.py)
         self.model = torch.nn.Sequential(
             self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, lora_dim, group_size),
         )
-
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
