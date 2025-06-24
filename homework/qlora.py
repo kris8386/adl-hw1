@@ -1,9 +1,10 @@
 from pathlib import Path
 import torch
 import torch.nn as nn
-from .bignet import BIGNET_DIM, LayerNorm  # noqa: F401
-from .low_precision import Linear4Bit, block_dequantize_4bit
 import math
+
+from .bignet import BIGNET_DIM, LayerNorm
+from .low_precision import Linear4Bit, block_dequantize_4bit
 
 
 class QLoRALinear(Linear4Bit):
@@ -18,16 +19,15 @@ class QLoRALinear(Linear4Bit):
         super().__init__(in_features, out_features, bias=bias, group_size=group_size)
         self.requires_grad_(False)
 
-        # LoRA adapters (float16 to reduce memory)
-        self.lora_a = nn.Linear(in_features, lora_dim, bias=False).half()
-        self.lora_b = nn.Linear(lora_dim, out_features, bias=False).half()
-
+        # LoRA adapters (float32 and trainable)
+        self.lora_a = nn.Linear(in_features, lora_dim, bias=False).float()
+        self.lora_b = nn.Linear(lora_dim, out_features, bias=False).float()
 
         # Weight initialization
         nn.init.kaiming_uniform_(self.lora_a.weight, a=math.sqrt(5))
         nn.init.zeros_(self.lora_b.weight)
 
-        # Enable gradients for LoRA
+        # Enable gradients
         for p in self.lora_a.parameters():
             p.requires_grad = True
         for p in self.lora_b.parameters():
@@ -40,24 +40,25 @@ class QLoRALinear(Linear4Bit):
         weight = block_dequantize_4bit(self.weight_q4, self.weight_norm)
         weight = weight.view(self._shape)
 
-        # Base path
+        # Linear using dequantized weights
         base_out = torch.nn.functional.linear(x, weight, self.bias)
 
-        # LoRA residual (cast input to LoRA dtype)
-        lora_out = self.lora_b(self.lora_a(x.to(self.lora_a.weight.dtype)))
+        # LoRA residual (keep in float32 for backward accuracy)
+        lora_out = self.lora_b(self.lora_a(x.float()))
 
         return (base_out + lora_out).to(input_dtype)
+
 
 class QLoRABigNet(torch.nn.Module):
     class Block(torch.nn.Module):
         def __init__(self, channels, lora_dim, group_size, bias=True):
             super().__init__()
             self.model = torch.nn.Sequential(
-                QLoRALinear(channels, channels, lora_dim, group_size, bias),
+                QLoRALinear(channels, channels, lora_dim, group_size, bias),  # Only one LoRA layer
                 torch.nn.ReLU(),
-                QLoRALinear(channels, channels, lora_dim, group_size, bias),
+                Linear4Bit(channels, channels, bias=bias, group_size=group_size),
                 torch.nn.ReLU(),
-                QLoRALinear(channels, channels, lora_dim, group_size, bias),
+                Linear4Bit(channels, channels, bias=bias, group_size=group_size),
             )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
