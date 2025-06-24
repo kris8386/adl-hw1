@@ -59,9 +59,7 @@ class QLoRABigNet(torch.nn.Module):
             self.model = torch.nn.Sequential(
                 QLoRALinear(channels, channels, lora_dim, group_size),
                 torch.nn.ReLU(),
-                QLoRALinear(channels, channels, lora_dim, group_size),
-                torch.nn.ReLU(),
-                QLoRALinear(channels, channels, lora_dim, group_size),
+                torch.nn.Linear(channels, channels),  # No LoRA
             )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
