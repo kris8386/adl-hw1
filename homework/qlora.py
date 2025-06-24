@@ -8,13 +8,13 @@ from .low_precision import Linear4Bit, block_dequantize_4bit
 
 
 class QLoRALinear(Linear4Bit):
-    def __init__(self, in_features, out_features, lora_dim, group_size=16, bias=True):
+    def __init__(self, in_features, out_features, lora_dim, group_size=4096, bias=False):
         super().__init__(in_features, out_features, bias=bias, group_size=group_size)
         self.requires_grad_(False)
 
-        # LoRA weights in float16 for memory savings
-        self.lora_a = nn.Linear(in_features, lora_dim, bias=False).half()
-        self.lora_b = nn.Linear(lora_dim, out_features, bias=False).half()
+        # Use float32 for LoRA to preserve gradient accuracy
+        self.lora_a = nn.Linear(in_features, lora_dim, bias=False).float()
+        self.lora_b = nn.Linear(lora_dim, out_features, bias=False).float()
 
         nn.init.kaiming_uniform_(self.lora_a.weight, a=math.sqrt(5))
         nn.init.zeros_(self.lora_b.weight)
@@ -26,17 +26,19 @@ class QLoRALinear(Linear4Bit):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         input_dtype = x.dtype
+
+        # Base linear output from 4-bit dequantized weights
         weight = block_dequantize_4bit(self.weight_q4, self.weight_norm).view(self._shape)
         base_out = torch.nn.functional.linear(x, weight, self.bias)
 
-        # Compute LoRA part in float16, cast result back
-        lora_out = self.lora_b(self.lora_a(x.to(torch.float16)))
+        # LoRA output in float32
+        lora_out = self.lora_b(self.lora_a(x.to(torch.float32)))
         return base_out + lora_out.to(input_dtype)
 
 
 class QLoRABigNet(nn.Module):
     class Block(nn.Module):
-        def __init__(self, channels, lora_dim=None, group_size=16, bias=True):
+        def __init__(self, channels, lora_dim=None, group_size=4096, bias=False):
             super().__init__()
             if lora_dim is not None:
                 self.model = nn.Sequential(
@@ -61,7 +63,7 @@ class QLoRABigNet(nn.Module):
     def __init__(self, lora_dim=1, group_size=4096, bias=False):
         super().__init__()
         self.model = nn.Sequential(
-            self.Block(BIGNET_DIM, lora_dim, group_size, bias),   # Block 0 - LoRA
+            self.Block(BIGNET_DIM, lora_dim, group_size, bias),   # Block 0 — LoRA enabled
             LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, None, group_size, bias),       # Block 1
             LayerNorm(BIGNET_DIM),
@@ -69,7 +71,7 @@ class QLoRABigNet(nn.Module):
             LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, None, group_size, bias),       # Block 3
             LayerNorm(BIGNET_DIM),
-            self.Block(BIGNET_DIM, lora_dim, group_size, bias),   # Block 4 - LoRA
+            self.Block(BIGNET_DIM, None, group_size, bias),       # Block 4
             LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, None, group_size, bias),       # Block 5
         )
