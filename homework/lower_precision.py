@@ -1,18 +1,12 @@
 from pathlib import Path
 import torch
-from .qlora import QLoRABigNet  
+from .qlora import QLoRABigNet  # or wherever your QLoRABigNet is
 
 def load(path: Path | None):
     # Extra credit: A BigNet variant that uses <4 bits/parameter and retains decent accuracy
-    # A <9MB compressed model using 4-bit quantization + LoRA
-    model = QLoRABigNet(
-        lora_dim=4,        # smallest LoRA size
-        group_size=128     # fewer float16 normalization terms
-    )
-
+    model = QLoRABigNet(lora_dim=32, group_size=16)
     if path is not None:
-        model.load_state_dict(torch.load(path, weights_only=True), strict=False)
-
+        state_dict = torch.load(path, weights_only=True)
+        model.load_state_dict(state_dict, strict=False)
     return model
-
 
