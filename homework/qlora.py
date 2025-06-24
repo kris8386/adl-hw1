@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 from .low_precision import Linear4Bit, block_dequantize_4bit
 from .bignet import BIGNET_DIM, LayerNorm
-
+from pathlib import Path
 
 class QLoRALinear(Linear4Bit):
     def __init__(self, in_features, out_features, lora_dim, group_size=128, bias=False):
@@ -67,4 +67,4 @@ def load(path: Path | None) -> QLoRABigNet:
     if path is not None:
         model.load_state_dict(torch.load(path, weights_only=True), strict=False)
     return model
-from pathlib import Path
+
