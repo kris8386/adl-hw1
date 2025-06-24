@@ -39,7 +39,7 @@ def block_dequantize_4bit(x_quant_4: torch.Tensor, normalization: torch.Tensor) 
 
 
 class Linear4Bit(torch.nn.Module):
-    def __init__(self, in_features: int, out_features: int, bias: bool = False, group_size: int = 16) -> None:
+    def __init__(self, in_features: int, out_features: int, bias: bool = True, group_size: int = 16) -> None:
         super().__init__()
         # Let's store all the required information to load the weights from a checkpoint
         self._shape = (out_features, in_features)
