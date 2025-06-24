@@ -18,9 +18,10 @@ class QLoRALinear(Linear4Bit):
         super().__init__(in_features, out_features, bias=bias, group_size=group_size)
         self.requires_grad_(False)
 
-        # LoRA adapters (float32 and trainable)
-        self.lora_a = nn.Linear(in_features, lora_dim, bias=False).float()
-        self.lora_b = nn.Linear(lora_dim, out_features, bias=False).float()
+        # LoRA adapters (float16 to reduce memory)
+        self.lora_a = nn.Linear(in_features, lora_dim, bias=False).half()
+        self.lora_b = nn.Linear(lora_dim, out_features, bias=False).half()
+
 
         # Weight initialization
         nn.init.kaiming_uniform_(self.lora_a.weight, a=math.sqrt(5))
@@ -43,10 +44,10 @@ class QLoRALinear(Linear4Bit):
         base_out = torch.nn.functional.linear(x, weight, self.bias)
 
         # LoRA residual in float32
-        # lora_out = self.lora_b(self.lora_a(x.float()))
+        lora_out = self.lora_b(self.lora_a(x.float()))
 
-        # return (base_out + lora_out).to(input_dtype)
-        return base_out.to(input_dtype)
+        return (base_out + lora_out).to(input_dtype)
+    
 
 
 class QLoRABigNet(torch.nn.Module):
