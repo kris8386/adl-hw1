@@ -12,7 +12,7 @@ class QLoRALinear(Linear4Bit):
         super().__init__(in_features, out_features, bias=bias, group_size=group_size)
         self.requires_grad_(False)
 
-        # LoRA adapters in float16 to save memory
+        # LoRA weights in float16 for memory savings
         self.lora_a = nn.Linear(in_features, lora_dim, bias=False).half()
         self.lora_b = nn.Linear(lora_dim, out_features, bias=False).half()
 
@@ -29,13 +29,13 @@ class QLoRALinear(Linear4Bit):
         weight = block_dequantize_4bit(self.weight_q4, self.weight_norm).view(self._shape)
         base_out = torch.nn.functional.linear(x, weight, self.bias)
 
-        # Apply LoRA in float16
+        # Compute LoRA part in float16, cast result back
         lora_out = self.lora_b(self.lora_a(x.to(torch.float16)))
-        return (base_out + lora_out.to(input_dtype))
+        return base_out + lora_out.to(input_dtype)
 
 
-class QLoRABigNet(torch.nn.Module):
-    class Block(torch.nn.Module):
+class QLoRABigNet(nn.Module):
+    class Block(nn.Module):
         def __init__(self, channels, lora_dim=None, group_size=16, bias=True):
             super().__init__()
             if lora_dim is not None:
@@ -67,9 +67,9 @@ class QLoRABigNet(torch.nn.Module):
             LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, None, group_size, bias),       # Block 2
             LayerNorm(BIGNET_DIM),
-            self.Block(BIGNET_DIM, lora_dim, group_size, bias),   # Block 3 - LoRA
+            self.Block(BIGNET_DIM, None, group_size, bias),       # Block 3
             LayerNorm(BIGNET_DIM),
-            self.Block(BIGNET_DIM, None, group_size, bias),       # Block 4
+            self.Block(BIGNET_DIM, lora_dim, group_size, bias),   # Block 4 - LoRA
             LayerNorm(BIGNET_DIM),
             self.Block(BIGNET_DIM, None, group_size, bias),       # Block 5
         )
