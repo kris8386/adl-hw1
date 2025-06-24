@@ -43,9 +43,10 @@ class QLoRALinear(Linear4Bit):
         base_out = torch.nn.functional.linear(x, weight, self.bias)
 
         # LoRA residual in float32
-        lora_out = self.lora_b(self.lora_a(x.float()))
+        # lora_out = self.lora_b(self.lora_a(x.float()))
 
-        return (base_out + lora_out).to(input_dtype)
+        # return (base_out + lora_out).to(input_dtype)
+        return base_out.to(input_dtype)
 
 
 class QLoRABigNet(torch.nn.Module):
