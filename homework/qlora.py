@@ -60,6 +60,8 @@ class QLoRABigNet(torch.nn.Module):
                 QLoRALinear(channels, channels, lora_dim, group_size),
                 torch.nn.ReLU(),
                 torch.nn.Linear(channels, channels),  # No LoRA
+                torch.nn.ReLU(),
+                torch.nn.Linear(channels, channels),  # No LoRA
             )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
