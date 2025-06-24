@@ -84,7 +84,7 @@ class QLoRABigNet(torch.nn.Module):
 
 
 def load(path: Path | None) -> QLoRABigNet:
-    net = QLoRABigNet(lora_dim=1, group_size=256)
+    net = QLoRABigNet()
     if path is not None:
         net.load_state_dict(torch.load(path, weights_only=True), strict=False)
     return net
