@@ -57,11 +57,11 @@ class QLoRABigNet(torch.nn.Module):
             super().__init__()
             # TODO: Implement me (feel free to copy and reuse code from bignet.py)
             self.model = torch.nn.Sequential(
-                QLoRALinear(channels, channels, lora_dim, group_size),
+                QLoRALinear(channels, channels, lora_dim, group_size, bias=False),
                 torch.nn.ReLU(),
-                QLoRALinear(channels, channels, lora_dim, group_size),
+                QLoRALinear(channels, channels, lora_dim, group_size, bias=False),
                 torch.nn.ReLU(),
-                QLoRALinear(channels, channels, lora_dim, group_size),
+                QLoRALinear(channels, channels, lora_dim, group_size, bias=False),
             )
 
         def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -71,25 +71,20 @@ class QLoRABigNet(torch.nn.Module):
         super().__init__()
         # TODO: Implement me (feel free to copy and reuse code from bignet.py)
         self.model = torch.nn.Sequential(
-            self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
-            self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
-            self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
-            self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
-            self.Block(BIGNET_DIM, lora_dim, group_size),
-            LayerNorm(BIGNET_DIM),
-            self.Block(BIGNET_DIM, lora_dim, group_size),
-        )
+        self.Block(BIGNET_DIM, lora_dim, group_size),
+        self.Block(BIGNET_DIM, lora_dim, group_size),
+        self.Block(BIGNET_DIM, lora_dim, group_size),
+        self.Block(BIGNET_DIM, lora_dim, group_size),
+        self.Block(BIGNET_DIM, lora_dim, group_size),
+        self.Block(BIGNET_DIM, lora_dim, group_size),
+    )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
 
 def load(path: Path | None) -> QLoRABigNet:
-    net = QLoRABigNet()
+    net = QLoRABigNet(lora_dim=1, group_size=256)
     if path is not None:
         net.load_state_dict(torch.load(path, weights_only=True), strict=False)
     return net
