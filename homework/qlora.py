@@ -40,15 +40,13 @@ class QLoRALinear(Linear4Bit):
         weight = block_dequantize_4bit(self.weight_q4, self.weight_norm)
         weight = weight.view(self._shape)
 
-        # Base output
+        # Base path
         base_out = torch.nn.functional.linear(x, weight, self.bias)
 
-        # LoRA residual in float32
-        lora_out = self.lora_b(self.lora_a(x.float()))
+        # LoRA residual (cast input to LoRA dtype)
+        lora_out = self.lora_b(self.lora_a(x.to(self.lora_a.weight.dtype)))
 
         return (base_out + lora_out).to(input_dtype)
-    
-
 
 class QLoRABigNet(torch.nn.Module):
     class Block(torch.nn.Module):
